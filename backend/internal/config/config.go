@@ -2,46 +2,43 @@ package config
 
 import (
 	"os"
-	"strings"
 
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	AppEnv        string
-	AppPort       string
-	DBDriver      string
-	DBDSN         string
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
-	JWTSecret     string
-	JWTExpire     string
-	LogLevel      string
+	AppEnv     string
+	DBType     string
+	SQLitePath string
+	RedisHost  string
+	RedisPort  int
+	RedisDB    int
+	JWTSecret  string
 }
 
-func Load() (*Config, error) {
-	_ = godotenv.Load(".env.development", ".env")
-
-	cfg := &Config{
-		AppEnv:        getEnv("APP_ENV", "development"),
-		AppPort:       getEnv("APP_PORT", "8080"),
-		DBDriver:      getEnv("DB_DRIVER", "sqlite"),
-		DBDSN:         getEnv("DB_DSN", "./data/nexus.db"),
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-		RedisDB:       0,
-		JWTSecret:     getEnv("JWT_SECRET", "dev-secret"),
-		JWTExpire:     getEnv("JWT_EXPIRE", "24h"),
-		LogLevel:      getEnv("LOG_LEVEL", "debug"),
+func Load() *Config {
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
 	}
 
-	return cfg, nil
-}
+	viper.SetConfigName(".env." + env)
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("../") // backend 子目录运行时向上找
+	viper.AutomaticEnv()
 
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return strings.TrimSpace(value)
+	if err := viper.ReadInConfig(); err != nil {
+		// 没有 .env 文件时继续使用系统环境变量或默认值
 	}
-	return fallback
+
+	return &Config{
+		AppEnv:     viper.GetString("APP_ENV"),
+		DBType:     viper.GetString("DB_TYPE"),
+		SQLitePath: viper.GetString("SQLITE_PATH"),
+		RedisHost:  viper.GetString("REDIS_HOST"),
+		RedisPort:  viper.GetInt("REDIS_PORT"),
+		RedisDB:    viper.GetInt("REDIS_DB"),
+		JWTSecret:  viper.GetString("JWT_SECRET"),
+	}
 }
